@@ -1,5 +1,5 @@
 import requests
-from time import sleep, perf_counter
+from time import time, sleep, perf_counter
 from web3.main import Web3
 
 from celery import shared_task
@@ -181,46 +181,26 @@ def rank_nfts_task(project_id):
 @shared_task(bind=True)
 @print_timing
 def fetch_and_rank_nfts_task(self, input_file_path, **kwargs):
-    protocol = uri.split("://")[0]
-
-    if not uri.endswith("/"):
-        uri += "/"
-
-    # def task(item_id, nft_list, nft_attribute_dict, nft_trait_list):
-    #     data = requests.get(
-    #         f"{uri}{item_id}"
-    #     ).json()
-    #     nft = NFT(nft_id=item_id, project=project, image_url=data["image"].split(protocol)[1])
-    #     nft_list.append(nft)
-
-    #     for attribute in data["attributes"]:
-    #         if nft_attribute_dict[f'{attribute["trait_type"]}|{attribute["value"]}']:
-    #             nft_attribute = nft_attribute_dict[f'{attribute["trait_type"]}|{attribute["value"]}']
-    #         else:
-    #             nft_attribute = NFTAttribute(project=project, name=attribute["trait_type"], value=attribute["value"])
-    #             nft_attribute_dict[f'{attribute["trait_type"]}|{attribute["value"]}'] = nft_attribute
-    #         nft_trait_list.append(NFTTrait(nft=nft, attribute=nft_attribute))
-        
     nft_list = []
     nft_attribute_dict = defaultdict(lambda : None)
     nft_trait_list = []
 
-    subprocess.run([
-        f"mkdir output_temp && ",
-        f"aria2c -i {input_file_path} --dir output_temp {kwargs['params']}"],
-        )
-
-    print(f"All records done")
-    print("start insert DB")
+    # subprocess.run([
+    #     f"mkdir output_temp && ",
+    #     f"aria2c -i {input_file_path} --dir output_temp {kwargs['params']}"],
+    #     )
     # NFT.objects.bulk_create(nft_list)
     # NFTAttribute.objects.bulk_create(list(nft_attribute_dict.values()))
     # NFTTrait.objects.bulk_create(nft_trait_list)
-    print("finished insert DB")
     # Call rank function
     # rank_nfts_task(project.id)
+    ts = int(time())
 
-    #python mkdir
-    subprocess.run([
-        f"mkdir output_temp && ",
-        f"aria2c -i C:\\aria2\\input.txt --dir output_temp"],
-        )
+    cmd = f"""                                                  
+        aria2c --input-file=input.txt --dir {ts} && \
+        awk 1 {ts}/* > {ts}/output.txt                                           
+        """
+
+    subprocess.run(cmd, capture_output=True, shell=True)
+    #subprocess.run([f"aria2c",  f"--input-file=input.txt", f"--dir=download", f"&&", f"cat download/* > output.txt"])
+    #subprocess.run([f"cat", "download/*", f">",  f"download/output.txt"])

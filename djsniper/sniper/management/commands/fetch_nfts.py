@@ -8,11 +8,11 @@ from celery import group
 
 class Command(BaseCommand):
     def add_arguments(self, parser):
-        parser.add_argument('--input_file_path', nargs='?', type=str)
-        parser.add_argument('--aria_params', nargs='?', type=str)
+        parser.add_argument('--input_file_path', nargs='?', type=str, default='')
+        parser.add_argument('--aria_params', nargs='?', type=str, default='')
 
     def handle(self, *args, **options):
-        self.fetch_nfts(options['uri'], options['number_of_nfts'], aria_params=options['aria_params'])
+        self.fetch_nfts(options['input_file_path'], aria_params=options['aria_params'])
 
     # def fetch_nfts(self, uri, number_of_nfts, **kwargs):
     #     print(f"GETTING {uri}")
