@@ -9,15 +9,12 @@ from celery import group
 class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument('--input_file_path', nargs='?', type=str, default='')
+        parser.add_argument('--output_file_path', nargs='?', type=str, default='download/tmp')
         parser.add_argument('--aria_params', nargs='?', type=str, default='')
 
     def handle(self, *args, **options):
-        self.fetch_nfts(options['input_file_path'], aria_params=options['aria_params'])
+        self.fetch_nfts(options['input_file_path'], aria_params=options['aria_params'], output_file_path=options['output_file_path'])
 
-    # def fetch_nfts(self, uri, number_of_nfts, **kwargs):
-    #     print(f"GETTING {uri}")
-    #     # result = fetch_and_rank_nfts_task.apply_async(args=(uri, number_of_nfts), kwargs=kwargs)
-    #     fetch_and_rank_nfts_task(uri, number_of_nfts, **kwargs)
     def fetch_nfts(self, input_file_path , **kwargs):
         print(f"GETTING {input_file_path}")
         # result = fetch_and_rank_nfts_task.apply_async(args=(uri, number_of_nfts), kwargs=kwargs)

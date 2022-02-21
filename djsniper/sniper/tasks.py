@@ -1,3 +1,4 @@
+import json
 import requests
 from time import time, sleep, perf_counter
 from web3.main import Web3
@@ -181,26 +182,55 @@ def rank_nfts_task(project_id):
 @shared_task(bind=True)
 @print_timing
 def fetch_and_rank_nfts_task(self, input_file_path, **kwargs):
-    nft_list = []
-    nft_attribute_dict = defaultdict(lambda : None)
-    nft_trait_list = []
-
-    # subprocess.run([
-    #     f"mkdir output_temp && ",
-    #     f"aria2c -i {input_file_path} --dir output_temp {kwargs['params']}"],
-    #     )
-    # NFT.objects.bulk_create(nft_list)
-    # NFTAttribute.objects.bulk_create(list(nft_attribute_dict.values()))
-    # NFTTrait.objects.bulk_create(nft_trait_list)
-    # Call rank function
-    # rank_nfts_task(project.id)
-    ts = int(time())
-
+    output_file_path = kwargs["output_file_path"]
+    #cmd for gather all json files to one file
     cmd = f"""                                                  
-        aria2c --input-file=input.txt --dir {ts} && \
-        awk 1 {ts}/* > {ts}/output.txt                                           
+        rm -rf {output_file_path}
+        aria2c --input-file=input.txt --dir {output_file_path} && \
+        awk 1 {output_file_path}/* > {output_file_path}/output.txt                                           
         """
-
     subprocess.run(cmd, capture_output=True, shell=True)
-    #subprocess.run([f"aria2c",  f"--input-file=input.txt", f"--dir=download", f"&&", f"cat download/* > output.txt"])
-    #subprocess.run([f"cat", "download/*", f">",  f"download/output.txt"])
+
+
+    nfts=[]
+    trait_type_value_map = {}
+
+    with open(f"{output_file_path}/output.txt", "r") as f:
+        for j in f:
+            data = json.loads(j)
+            attributes = data["attributes"]
+            nfts.append(attributes)
+            for attribute in attributes:
+                trait_type = attribute["trait_type"]
+                value = attribute["value"]
+                if trait_type not in trait_type_value_map:
+                    trait_type_value_map[trait_type] = {}
+                trait_value_map = trait_type_value_map[trait_type]
+                if value not in trait_value_map:
+                    trait_value_map[value] = 0
+                trait_value_map[value] += 1
+
+    # For normalization
+    trait_type_categories_count_map = {}
+    for trait_type in trait_type_value_map:
+        categories_count = len(trait_type_value_map[trait_type])
+        trait_type_categories_count_map[trait_type] = categories_count
+    # trait_type_count = len(trait_type_categories_count_map)
+
+    all_nfts_rarity = {}
+    for idx, nft in enumerate(nfts):
+        attributes_len = len(nft)
+        rarity = 0
+        for attribute in nft:
+            trait_sum = trait_type_value_map[attribute["trait_type"]][attribute["value"]]
+            # Without normalization
+            # rarity_score = 1 / (trait_sum / NUM_OF_NFTS)
+            # With normalizeation, normalized by num of traits and num of categories in that trait
+            rarity_score = 1000000 / (attributes_len * trait_type_categories_count_map[attribute["trait_type"]]) / (trait_sum / len(nfts))
+            rarity += rarity_score
+        all_nfts_rarity[str(idx)] = rarity
+
+    sort_orders = sorted(all_nfts_rarity.items(), key=lambda x: x[1], reverse=True)
+
+    for i in sort_orders:
+        print("NFT id: %s, rarity_score: %d" % (i[0], i[1]))
